@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Catch the Fruit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-top: #FFD9A0;
+    --sky-bottom: #FF9AA8;
+    --ground: #7CB86B;
+    --ground-dark: #5FA150;
+    --basket: #C6822D;
+    --basket-dark: #96601E;
+    --panel: rgba(255, 255, 255, 0.85);
+    --ink: #4A3728;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Baloo 2', sans-serif;
+    background: linear-gradient(#222, #444);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: var(--ink);
+  }
+
+  #game-wrap {
+    position: relative;
+    width: 480px;
+    max-width: 100vw;
+    height: 720px;
+    max-height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 65%, var(--ground) 65%, var(--ground-dark) 100%);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    border-radius: 12px;
+    touch-action: none;
+    user-select: none;
+  }
+
+  /* Sun */
+  #sun {
+    position: absolute;
+    top: 40px;
+    right: 50px;
+    width: 70px;
+    height: 70px;
+    background: #FFE9A8;
+    border-radius: 50%;
+    box-shadow: 0 0 40px 10px rgba(255, 233, 168, 0.7);
+  }
+
+  /* Clouds */
+  .cloud {
+    position: absolute;
+    background: rgba(255,255,255,0.8);
+    border-radius: 50px;
+    opacity: 0.9;
+  }
+  .cloud::before, .cloud::after {
+    content: "";
+    position: absolute;
+    background: rgba(255,255,255,0.8);
+    border-radius: 50%;
+  }
+  #cloud1 { top: 60px; left: 30px; width: 90px; height: 28px; animation: drift 30s linear infinite; }
+  #cloud1::before { width: 45px; height: 45px; top: -20px; left: 10px; }
+  #cloud1::after { width: 35px; height: 35px; top: -14px; left: 45px; }
+  #cloud2 { top: 130px; left: 250px; width: 70px; height: 22px; animation: drift 22s linear infinite; }
+  #cloud2::before { width: 35px; height: 35px; top: -16px; left: 8px; }
+  #cloud2::after { width: 26px; height: 26px; top: -10px; left: 34px; }
+
+  @keyframes drift {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(30px); }
+    100% { transform: translateX(0); }
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: var(--panel);
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 20px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    z-index: 5;
+  }
+
+  #sound-toggle {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: var(--panel);
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    z-index: 5;
+  }
+
+  /* Falling fruit */
+  .fruit {
+    position: absolute;
+    font-size: 38px;
+    line-height: 1;
+    z-index: 3;
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,0.25));
+    will-change: transform;
+  }
+
+  /* Player: simple person holding a basket */
+  #player {
+    position: absolute;
+    bottom: 26px;
+    width: 90px;
+    height: 120px;
+    z-index: 4;
+    transform: translateX(-50%);
+  }
+  #head {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 30px;
+    background: #F4C29B;
+    border-radius: 50%;
+    border: 2px solid #D89A6A;
+  }
+  #body {
+    position: absolute;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 46px;
+    height: 52px;
+    background: #4E8FCB;
+    border-radius: 16px 16px 8px 8px;
+    border: 2px solid #3A6FA0;
+  }
+  #arm-l, #arm-r {
+    position: absolute;
+    top: 34px;
+    width: 12px;
+    height: 34px;
+    background: #4E8FCB;
+    border: 2px solid #3A6FA0;
+    border-radius: 8px;
+  }
+  #arm-l { left: 8px; transform: rotate(18deg); }
+  #arm-r { right: 8px; transform: rotate(-18deg); }
+  #basket {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 78px;
+    height: 34px;
+    background: linear-gradient(var(--basket), var(--basket-dark));
+    border-radius: 6px 6px 20px 20px;
+    border: 3px solid var(--basket-dark);
+  }
+  #basket::before {
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: 8px;
+    width: 62px;
+    height: 16px;
+    border: 3px solid var(--basket-dark);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+  }
+  #basket::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    height: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.1), 0 16px 0 rgba(0,0,0,0.08);
+  }
+
+  /* Score pop */
+  .pop {
+    position: absolute;
+    font-weight: 800;
+    font-size: 20px;
+    color: #E8792C;
+    z-index: 6;
+    pointer-events: none;
+    animation: floatUp 0.7s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-40px); }
+  }
+
+  /* Overlay screens */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(30, 20, 10, 0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #fff;
+    z-index: 10;
+    padding: 20px;
+  }
+  .overlay h1 {
+    font-size: 40px;
+    margin: 0 0 8px;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.3);
+  }
+  .overlay p {
+    font-size: 16px;
+    margin: 4px 0 20px;
+    opacity: 0.9;
+    max-width: 320px;
+  }
+  .btn {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 30px;
+    background: #FF9F43;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #C97A2C;
+    transition: transform 0.08s;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #C97A2C; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="game-wrap">
+  <div id="sun"></div>
+  <div class="cloud" id="cloud1"></div>
+  <div class="cloud" id="cloud2"></div>
+
+  <div id="hud">🍎 Score: <span id="score">0</span> &nbsp;|&nbsp; ❌ Missed: <span id="misses">0</span>/10</div>
+  <audio id="bg-music" src="bg.mp3" loop preload="auto"></audio>
+  <button id="sound-toggle" title="Toggle music">🔊</button>
+
+  <div id="player">
+    <div id="head"></div>
+    <div id="body"></div>
+    <div id="arm-l"></div>
+    <div id="arm-r"></div>
+    <div id="basket"></div>
+  </div>
+
+  <div id="start-screen" class="overlay">
+    <h1>🧺 Catch the Fruit</h1>
+    <p>Move the basket with your mouse, arrow keys, or finger. Catch as many fruits as you can!</p>
+    <button class="btn" id="start-btn">Start Game</button>
+  </div>
+
+  <div id="pause-hint" class="hidden" style="position:absolute; bottom:8px; width:100%; text-align:center; font-size:12px; color:rgba(255,255,255,0.8); z-index:5;">
+    Use ← → arrows, mouse, or touch to move
+  </div>
+
+  <div id="gameover-screen" class="overlay hidden">
+    <h1>🧺 Game Over</h1>
+    <p>You missed 10 fruits! Final score: <span id="final-score">0</span></p>
+    <button class="btn" id="restart-btn">Play Again</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const wrap = document.getElementById('game-wrap');
+  const player = document.getElementById('player');
+  const scoreEl = document.getElementById('score');
+  const missesEl = document.getElementById('misses');
+  const startScreen = document.getElementById('start-screen');
+  const startBtn = document.getElementById('start-btn');
+  const soundToggle = document.getElementById('sound-toggle');
+  const pauseHint = document.getElementById('pause-hint');
+  const gameoverScreen = document.getElementById('gameover-screen');
+  const finalScoreEl = document.getElementById('final-score');
+  const restartBtn = document.getElementById('restart-btn');
+
+  const FRUITS = ['🍎', '🍌', '🍇', '🍊', '🍉', '🍓', '🍍'];
+  const MAX_MISSES = 10;
+
+  let score = 0;
+  let misses = 0;
+  let playerX = wrap.clientWidth / 2;
+  let running = false;
+  let spawnTimer = null;
+  let animId = null;
+  let fallSpeed = 2.2;      // base fall speed, increases with score
+  let spawnInterval = 1100; // ms between fruit spawns
+
+  const fruitsOnScreen = [];
+
+  function clampX(x) {
+    const half = player.clientWidth / 2;
+    return Math.max(half, Math.min(wrap.clientWidth - half, x));
+  }
+
+  function setPlayerPosition(x) {
+    playerX = clampX(x);
+    player.style.left = playerX + 'px';
+  }
+
+  // ---------- Input handling ----------
+  wrap.addEventListener('mousemove', (e) => {
+    if (!running) return;
+    const rect = wrap.getBoundingClientRect();
+    setPlayerPosition(e.clientX - rect.left);
+  });
+
+  wrap.addEventListener('touchmove', (e) => {
+    if (!running) return;
+    e.preventDefault();
+    const rect = wrap.getBoundingClientRect();
+    const touchX = e.touches[0].clientX - rect.left;
+    setPlayerPosition(touchX);
+  }, { passive: false });
+
+  const keys = {};
+  document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+  document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+  function handleKeyboard() {
+    if (!running) return;
+    if (keys['ArrowLeft']) setPlayerPosition(playerX - 7);
+    if (keys['ArrowRight']) setPlayerPosition(playerX + 7);
+  }
+
+  // ---------- Fruit spawning ----------
+  function spawnFruit() {
+    const fruitEl = document.createElement('div');
+    fruitEl.className = 'fruit';
+    fruitEl.textContent = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+    const x = Math.random() * (wrap.clientWidth - 40) + 10;
+    fruitEl.style.left = x + 'px';
+    fruitEl.style.top = '-40px';
+    wrap.appendChild(fruitEl);
+    fruitsOnScreen.push({ el: fruitEl, x, y: -40, speed: fallSpeed + Math.random() * 1.2 });
+  }
+
+  function scheduleSpawn() {
+    spawnTimer = setTimeout(() => {
+      if (running) {
+        spawnFruit();
+        // difficulty ramps up slowly as score increases
+        spawnInterval = Math.max(500, 1100 - score * 15);
+        scheduleSpawn();
+      }
+    }, spawnInterval);
+  }
+
+  // ---------- Score popup ----------
+  function showPop(x, y) {
+    const pop = document.createElement('div');
+    pop.className = 'pop';
+    pop.textContent = '+1';
+    pop.style.left = x + 'px';
+    pop.style.top = y + 'px';
+    wrap.appendChild(pop);
+    setTimeout(() => pop.remove(), 700);
+  }
+
+  // ---------- Main loop ----------
+  function update() {
+    if (!running) return;
+    handleKeyboard();
+
+    const basketRect = {
+      left: playerX - 39,
+      right: playerX + 39,
+      top: wrap.clientHeight - 26 - 30 // basket top area
+    };
+
+    for (let i = fruitsOnScreen.length - 1; i >= 0; i--) {
+      const f = fruitsOnScreen[i];
+      f.y += f.speed;
+      f.el.style.top = f.y + 'px';
+
+      const fruitBottom = f.y + 38;
+      const fruitCenterX = f.x + 19;
+
+      // Caught?
+      if (
+        fruitBottom >= basketRect.top &&
+        fruitBottom <= wrap.clientHeight - 10 &&
+        fruitCenterX >= basketRect.left &&
+        fruitCenterX <= basketRect.right
+      ) {
+        score++;
+        scoreEl.textContent = score;
+        showPop(f.x, f.y);
+        f.el.remove();
+        fruitsOnScreen.splice(i, 1);
+        fallSpeed = 2.2 + score * 0.06; // gentle difficulty ramp
+        playSound('catch');
+        continue;
+      }
+
+      // Missed (fell past bottom)
+      if (f.y > wrap.clientHeight) {
+        f.el.remove();
+        fruitsOnScreen.splice(i, 1);
+        misses++;
+        missesEl.textContent = misses;
+        playSound('miss');
+        if (misses >= MAX_MISSES) {
+          endGame();
+          return;
+        }
+      }
+    }
+
+    animId = requestAnimationFrame(update);
+  }
+
+  function endGame() {
+    running = false;
+    clearTimeout(spawnTimer);
+    cancelAnimationFrame(animId);
+    fruitsOnScreen.forEach(f => f.el.remove());
+    fruitsOnScreen.length = 0;
+    finalScoreEl.textContent = score;
+    pauseHint.classList.add('hidden');
+    gameoverScreen.classList.remove('hidden');
+  }
+
+  // ---------- Background music (bg.mp3, looped, low volume) ----------
+  const bgMusic = document.getElementById('bg-music');
+  bgMusic.volume = 0.25; // keep it low so sound effects and gameplay stay in focus
+  let musicOn = true;
+
+  // Short sound effects are still generated on the fly, so no extra files are needed for these
+  let audioCtx = null;
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  function playNote(freq, duration) {
+    if (!audioCtx || !musicOn) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  function playSound(type) {
+    if (!audioCtx || !musicOn) return;
+    if (type === 'catch') {
+      playNote(523.3, 0.12); // short bright "ding" on catch
+    } else if (type === 'miss') {
+      playNote(150, 0.2); // low "thud" on miss
+    }
+  }
+
+  soundToggle.addEventListener('click', () => {
+    musicOn = !musicOn;
+    soundToggle.textContent = musicOn ? '🔊' : '🔇';
+    bgMusic.muted = !musicOn;
+  });
+
+  // ---------- Start / Reset ----------
+  function startGame() {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    bgMusic.currentTime = 0;
+    bgMusic.play().catch(() => {
+      // Autoplay can be blocked until a user gesture; the Start button click counts as one,
+      // so this should normally succeed. Logged quietly if it doesn't.
+      console.warn('Background music could not autoplay yet.');
+    });
+
+    score = 0;
+    misses = 0;
+    scoreEl.textContent = score;
+    missesEl.textContent = misses;
+    fallSpeed = 2.2;
+    spawnInterval = 1100;
+    fruitsOnScreen.forEach(f => f.el.remove());
+    fruitsOnScreen.length = 0;
+
+    setPlayerPosition(wrap.clientWidth / 2);
+    startScreen.classList.add('hidden');
+    gameoverScreen.classList.add('hidden');
+    pauseHint.classList.remove('hidden');
+
+    running = true;
+    scheduleSpawn();
+    animId = requestAnimationFrame(update);
+  }
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', startGame);
+
+  // Initial placement
+  setPlayerPosition(wrap.clientWidth / 2);
+})();
+</script>
+
+</body>
+</html>
